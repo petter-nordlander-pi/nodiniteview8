@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jms.annotation.JmsListener;
@@ -17,21 +18,23 @@ public class LogReceiver {
 
     static Logger LOG = LoggerFactory.getLogger(LogReceiver.class);
 
+    static boolean SHOULD_LOG_PAYLOAD = System.getProperty("payload") != null; 
+
     @JmsListener(destination = "Nodinite.LogAgent.PickupService")
     public void receiveMessage(String body) {
         LOG.debug("Event <" + body + ">");
         try {
-            LOG.info("\nNODINITE EVENT -- \n{}", asYaml(body));
+            LOG.info("\nNODINITE EVENT -- \n{}", asYaml(body, SHOULD_LOG_PAYLOAD));
         } catch (IOException e) {
             LOG.error("Error parsing msg");
         }
     }
 
-    String asYaml(String jsonString) throws JsonProcessingException, IOException {
-        // parse JSON
+    String asYaml(String jsonString, boolean shouldLogPayload) throws JsonProcessingException, IOException {
         JsonNode jsonNodeTree = new ObjectMapper().readTree(jsonString);
-        ((ObjectNode)jsonNodeTree).remove("Body");
-        // save it as YAML
+        if (shouldLogPayload) {
+            ((ObjectNode)jsonNodeTree).remove("Body");
+        }
         String jsonAsYaml = new YAMLMapper().writeValueAsString(jsonNodeTree);
         return jsonAsYaml;
     }
